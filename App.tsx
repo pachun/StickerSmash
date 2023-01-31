@@ -1,10 +1,11 @@
 import { useRef, useState } from "react"
 import { StatusBar } from "expo-status-bar"
-import { StyleSheet, View, ImageSourcePropType } from "react-native"
+import { StyleSheet, View, ImageSourcePropType, Platform } from "react-native"
 import * as ImagePicker from "expo-image-picker"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import * as MediaLibrary from "expo-media-library"
 import { captureRef } from "react-native-view-shot"
+import domtoimage from "dom-to-image"
 
 import Button from "./components/Button"
 import IconButton from "./components/IconButton"
@@ -17,7 +18,7 @@ import EmojiSticker from "./components/EmojiSticker"
 import ImageViewer from "./components/ImageViewer"
 
 export default function App() {
-  const imageRef = useRef<View | null>(null)
+  const imageRef = useRef<View>(null)
   const [selectedImage, setSelectedImage] = useState<string>()
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false)
   const [showAppOptions, setShowAppOptions] = useState<boolean>(false)
@@ -35,18 +36,36 @@ export default function App() {
   const onModalClose = () => setIsModalVisible(false)
 
   const onSaveImageAsync = async () => {
-    try {
-      const localUri = await captureRef(imageRef, {
-        height: 440,
-        quality: 1,
-      })
+    if (Platform.OS !== "web") {
+      try {
+        const localUri = await captureRef(imageRef, {
+          height: 440,
+          quality: 1,
+        })
 
-      await MediaLibrary.saveToLibraryAsync(localUri)
-      if (localUri) {
-        alert("Saved!")
+        await MediaLibrary.saveToLibraryAsync(localUri)
+        if (localUri) {
+          alert("Saved!")
+        }
+      } catch (e) {
+        console.log(e)
       }
-    } catch (e) {
-      console.log(e)
+    } else {
+      domtoimage
+        .toJpeg(imageRef.current as unknown as Node, {
+          quality: 0.95,
+          width: 320,
+          height: 440,
+        })
+        .then((dataUrl: string) => {
+          let link = document.createElement("a")
+          link.download = "sticker-smash.jpeg"
+          link.href = dataUrl
+          link.click()
+        })
+        .catch((e: string) => {
+          console.log(e)
+        })
     }
   }
   const pickImageAsync = async () => {
